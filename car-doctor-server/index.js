@@ -15,6 +15,12 @@ app.use(cors({
 app.use(express.json());
 app.use(cookieParser());
 
+// create middleware
+const logger = async(req, res, next) => {
+    console.log("called", req.host, req.originalUrl);
+    next();
+}
+
 
 // mongoDB
 const uri = `mongodb+srv://${process.env.DB_USERNAME}:${process.env.DB_PASSWORD}@cluster0.wu8kmms.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`;
@@ -38,7 +44,7 @@ async function run() {
         const bookingCollection = client.db('carDoctorDB').collection('bookings');
 
         // JWT Auth related api
-        app.post("/jwt", async (req, res) => {
+        app.post("/jwt", logger, async (req, res) => {
             const user = req.body;
             console.log(user);
             const token = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET, { expiresIn: '10m' });
@@ -50,7 +56,7 @@ async function run() {
         })
 
         //  services api
-        app.get('/services', async (req, res) => {
+        app.get('/services', logger, async (req, res) => {
             const cursor = serviceCollection.find();
             const result = await cursor.toArray();
             res.send(result);
@@ -71,7 +77,7 @@ async function run() {
 
 
         // bookings 
-        app.get('/bookings', async (req, res) => {
+        app.get('/bookings', logger, async (req, res) => {
             console.log(req.query.email);
             console.log('tokens: ', req.cookies.token);
             let query = {};
