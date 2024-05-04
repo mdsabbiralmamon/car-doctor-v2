@@ -21,6 +21,26 @@ const logger = async(req, res, next) => {
     next();
 }
 
+// verify token
+const verifyToken = async(req, res, next) => {
+    const token = req.cookies?.token;
+    console.log("token in verify", token);
+    if (!token) {
+        res.status(401).send({message : 'Access Denied'});
+    }
+    jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, (err, decoded) => {
+        // error
+        if(err){
+            console.log(err);
+            res.status(401).send({message : 'Access Denied'});
+        }
+        // valid
+        console.log("decoded token value", decoded);
+        req.user = decoded;
+        next();
+    })
+}
+
 
 // mongoDB
 const uri = `mongodb+srv://${process.env.DB_USERNAME}:${process.env.DB_PASSWORD}@cluster0.wu8kmms.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`;
@@ -47,7 +67,7 @@ async function run() {
         app.post("/jwt", logger, async (req, res) => {
             const user = req.body;
             console.log(user);
-            const token = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET, { expiresIn: '10m' });
+            const token = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET, { expiresIn: "1h" });
             res
             .cookie('token', token, {
                 httpOnly: true,
@@ -77,9 +97,13 @@ async function run() {
 
 
         // bookings 
-        app.get('/bookings', logger, async (req, res) => {
+        app.get('/bookings', logger, verifyToken, async (req, res) => {
             console.log(req.query.email);
             console.log('tokens: ', req.cookies.token);
+            console.log('user from valid token: ', req.user);
+            if( req.query.email !== req.user.email){
+                return res.status(403).send({ message: 'forbidden' });
+            }
             let query = {};
             if (req.query?.email) {
                 query = { email: req.query.email }
